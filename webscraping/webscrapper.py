@@ -24,7 +24,7 @@ class WebScapper:
                         file_urls.append(line)
 
             temp_file = file.strip(".xml")
-            with open(f"./dataset/{temp_file}.en.jsonl", 'a') as f_en, open(f"./dataset/{temp_file}.it.jsonl", 'a') as f_it:        
+            with open(f"./extracted/{temp_file}.en.jsonl", 'a') as f_en, open(f"./extracted/{temp_file}.it.jsonl", 'a') as f_it:        
                 for url in file_urls:
                     doc = self.scrap_webpage(url)  
                     if doc:
@@ -36,32 +36,36 @@ class WebScapper:
     
     def scrap_webpage(self, url: str ) -> dict or None:
 
-        response = requests.get(url)
-        
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'lxml')
+        try:
 
-            meta_desc = soup.find("meta", attrs={"name": "description"})
+            response = requests.get(url)
+            
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'lxml')
 
-            title = soup.title.string
-            description = meta_desc['content'] if meta_desc else ""
-            url = response.url
-            text = soup.get_text(separator="\n", strip=True)
-            lang = detect(text)
-            doc = {
-                "doc_id": shortuuid.ShortUUID().random(length=10),
-                "title": title,
-                "description": description,
-                "url": url,
-                "lang": lang,
-                "text": text
-            }
-            print(doc)
-            return doc
+                meta_desc = soup.find("meta", attrs={"name": "description"})
 
-        else:
-            print("Error: ", response.status_code)
-            return None
+                title = soup.title.string
+                description = meta_desc['content'] if meta_desc else ""
+                url = response.url
+                text = soup.get_text(separator="\n", strip=True)
+                lang = detect(text)
+                doc = {
+                    "doc_id": shortuuid.ShortUUID().random(length=10),
+                    "title": title,
+                    "description": description,
+                    "url": url,
+                    "lang": lang,
+                    "text": text
+                }
+                print(doc)
+                return doc
+
+            else:
+                print("Error: ", response.status_code)
+                return None
+        except:
+            pass
 
 if __name__ == "__main__":
-    webscrapper = WebScapper("./sitemaps")
+    webscrapper = WebScapper("./dataset")

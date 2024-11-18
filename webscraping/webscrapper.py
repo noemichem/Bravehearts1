@@ -1,43 +1,71 @@
 import requests
+import json
+import os
+import shortuuid
+import xml.etree.ElementTree as ET
 from typing import List
 from bs4 import BeautifulSoup
+from langdetect import detect
 
 class WebScapper:
+
+    def __init__(self, folder_path: str ) -> None:
+
+        files = [f for f in os.listdir(folder_path)]
+        for file in files:
+            file_urls = []
+
+            # Collect all the urls from the sitemap files excluding the pdf files
+            with open(os.path.join(folder_path, file), 'r') as f:
+                lines = f.readlines()
+                for line in lines:
+                    if "loc" in line and ".pdf" not in line:
+                        line = line.replace("<loc>", "").replace("</loc>", "").strip() 
+                        file_urls.append(line)
+
+            temp_file = file.strip(".xml")
+            with open(f"./extracted/{temp_file}.en.jsonl", 'a') as f_en, open(f"./extracted/{temp_file}.it.jsonl", 'a') as f_it:        
+                for url in file_urls:
+                    doc = self.scrap_webpage(url)  
+                    if doc:
+                        if doc["lang"] == "en":
+                            f_en.write(json.dumps(doc) + "\n")
+                        elif doc["lang"] == "it":
+                            f_it.write(json.dumps(doc) + "\n")
+
     
-    urls = []
+    def scrap_webpage(self, url: str ) -> dict or None:
 
-    def __init__(self, url: str, urls: List[str] | None ) -> None:
-        if urls is None:
-            self.urls.append(url)
-        else:
-            self.urls =  urls.append(url)
+        try:
 
-    def get_urls(self) -> List[str]:
-        return self.urls
+            response = requests.get(url)
+            
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'lxml')
 
-    def start_scraping(self) -> None:
-        for url in self.urls:
-            self.scrap_webpage(url)
-    
-    def scrap_webpage(self, url: str) -> None:
-        response = requests.get(url)
-        
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'lxml')
-            # Extracting the title
-            title = soup.title.string
-            print(f"Title: {title}")
+                meta_desc = soup.find("meta", attrs={"name": "description"})
 
-            # # Extracting meta description
-            # meta_desc = soup.find("meta", attrs={"name": "description"})
-            # if meta_desc:
-            #     print(f"Meta Description: {meta_desc['content']}")
-            print(soup.get_text(separator="\n", strip=True))
+                title = soup.title.string
+                description = meta_desc['content'] if meta_desc else ""
+                url = response.url
+                text = soup.get_text(separator="\n", strip=True)
+                lang = detect(text)
+                doc = {
+                    "doc_id": shortuuid.ShortUUID().random(length=10),
+                    "title": title,
+                    "description": description,
+                    "url": url,
+                    "lang": lang,
+                    "text": text
+                }
+                print(doc)
+                return doc
 
-        else:
-            print("Error: ", response.status_code)
+            else:
+                print("Error: ", response.status_code)
+                return None
+        except:
+            pass
 
 if __name__ == "__main__":
-    url = "https://www.unipi.it/index.php/tuition-fees-and-financial-support/item/13589-tuition-fees-reduction"
-    webscrapper = WebScapper(url, None)
-    webscrapper.start_scraping()
+    webscrapper = WebScapper("./dataset")

@@ -1,3 +1,4 @@
+import json
 import re
 import string
 import nltk
@@ -6,6 +7,8 @@ from nltk.tokenize import regexp_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import SnowballStemmer
 from typing import List
+from pathlib import Path
+from dataclasses import dataclass, asdict
 
 # Download the stopwords
 nltk.download('punkt', quiet=True)
@@ -50,7 +53,35 @@ class Preprocessor:
 
         return tokens
 
-    
+
+class InvertedIndexManager:
+
+    @staticmethod
+    def load_inverted_index(file_path: str):
+        with open(file_path, 'r') as file:
+            inverted_index = json.load(file)
+        return inverted_index
+
+    @staticmethod
+    def save_index(output_folder_path: Path, lexicon: dict, inv_d: dict, inv_f: dict, doc_index: list, stats: dict):
+        # Save each part to a separate JSONL file
+        with open(f"{output_folder_path}/lexicon.jsonl", 'w', encoding='utf-8') as lex_file:
+            for term, entry in lexicon.items():
+                lex_file.write(json.dumps({"term": term, **asdict(entry)}, ensure_ascii=False) + '\n')
+
+        with open(f"{output_folder_path}/inverted_file.jsonl", 'w', encoding='utf-8') as inv_file:
+            for term_id, docids in inv_d.items():
+                inv_file.write(json.dumps({"termid": term_id, "docids": docids, "freqs": inv_f[term_id]}, ensure_ascii=False) + '\n')
+
+        with open(f"{output_folder_path}/doc_index.jsonl", 'w', encoding='utf-8') as doc_file:
+            for doc_entry in doc_index:
+                doc_file.write(json.dumps(doc_entry, ensure_ascii=False) + '\n')
+
+        with open(f"{output_folder_path}/stats.json", 'w', encoding='utf-8') as stats_file:
+            json.dump(stats, stats_file, ensure_ascii=False, indent=4)
+
+
+
 
 if __name__ == "__main__":
     text = """

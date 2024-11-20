@@ -1,6 +1,6 @@
 import math
 from collections import defaultdict
-from .models import InvertedIndex
+from .models import InvertedIndex, TopQueue
 from .utils import InvertedIndexManager, Preprocessor
 
 
@@ -65,10 +65,48 @@ class QueryProcessor:
         postings = self.inv_index.get_postings(qtermids)
         return self.boolean_or(postings)
 
+    # TAAT Algorithm
+    def taat(self, postings, k=10):
+        A = defaultdict(float)
+        for posting in postings:
+            current_docid = posting.docid()
+            while current_docid != math.inf:
+                A[current_docid] += posting.score()
+                posting.next()
+                current_docid = posting.docid()
+        top = TopQueue(k)
+        for docid, score in A.items():
+            top.insert(docid, score)
+        return sorted(top.queue, reverse=True)
 
+    def query_process_taat(self, query):
+        qtokens = set(Preprocessor.preprocess(query))
+        qtermids = self.inv_index.get_termids(qtokens)
+        postings = self.inv_index.get_postings(qtermids)
+        return self.taat(postings)
 
-# TAAT Algorithm
+    ## DAAT Algorithm
+    def daat(self, postings, k=10):
+        top = TopQueue(k)
+        current_docid = self.min_docid(postings)
+        while current_docid != math.inf:
+            score = 0
+            next_docid = math.inf
+            for posting in postings:
+                if posting.docid() == current_docid:
+                    score += posting.score()
+                    posting.next()
+                if not posting.is_end_list():
+                    next_docid = posting.docid()
+            top.insert(current_docid, score)
+            current_docid = next_docid
+        return sorted(top.queue, reverse=True)
 
+    def query_process_daat(self, query):
+        qtokens = set(Preprocessor.preprocess(query))
+        qtermids = self.inv_index.get_termids(qtokens)
+        postings = self.inv_index.get_postings(qtermids)
+        return self.daat(postings)
 
 
 if __name__ == '__main__':
@@ -76,4 +114,4 @@ if __name__ == '__main__':
     input_folder = "./outputs/index_en/index.pkl"
     
     query_processor = QueryProcessor(input_folder)
-    print(query_processor.query_process_and('unipi'))
+    print(query_processor.query_process_daat('unipi'))

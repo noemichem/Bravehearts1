@@ -1,4 +1,5 @@
 import math
+import heapq
 
 class InvertedIndex:
 
@@ -55,3 +56,35 @@ class InvertedIndex:
 
     def get_postings(self, termids):
         return [self.get_posting(termid) for termid in termids]
+
+
+class TopQueue:
+    def __init__(self, k=10, threshold=0.0):
+        self.queue = []
+        self.k = k
+        self.threshold = threshold
+
+    def size(self):
+        return len(self.queue)
+
+    def would_enter(self, score):
+        return score > self.threshold
+
+    def clear(self, new_threshold=None):
+        self.queue = []
+        if new_threshold:
+            self.threshold = new_threshold
+
+    def __repr__(self):
+        return f'<{self.size()} items, th={self.threshold} {self.queue}'
+
+    def insert(self, docid, score):
+        if score > self.threshold:
+            if self.size() >= self.k:
+                heapq.heapreplace(self.queue, (score, docid))
+            else:
+                heapq.heappush(self.queue, (score, docid))
+            if self.size() >= self.k:
+                self.threshold = max(self.threshold, self.queue[0][0])
+            return True
+        return False

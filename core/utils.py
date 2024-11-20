@@ -11,7 +11,6 @@ from typing import List
 from pathlib import Path
 from dataclasses import dataclass, asdict
 
-from .models import LexiconEntry
 
 # Download the stopwords
 nltk.download('punkt', quiet=True)

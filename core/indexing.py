@@ -8,14 +8,7 @@ from tqdm.auto import tqdm
 from typing import Literal
 
 from .utils import Preprocessor, InvertedIndexManager
-
-# Define a dataclass for lexicon entries
-@dataclass
-class LexiconEntry:
-    termid: int
-    doc_freq: int = 0      # Number of documents containing the term
-    col_freq: int = 0      # Total occurrences of the term in the collection
-
+from .models import LexiconEntry
 
 class Indexing:
 
@@ -40,13 +33,16 @@ class Indexing:
         self.input_files = jsonl_files
         self.lang = "english" if lang == "en" else "italian"
 
-
+        # Initialize data structures
         self.lexicon = {}               # Term to LexiconEntry mapping
         self.doc_index = []             # Document index
         self.inv_d = defaultdict(list)  # TermID to list of DocIDs
         self.inv_f = defaultdict(list)  # TermID to list of term frequencies in each DocID
         self.termid = 0                 # TermID counter 
-        self.total_dl = 0               # Total document length
+
+        self.num_docs = 0
+        self.total_dl = 0
+        self.total_toks = 0
 
 
     def build_index(self):
@@ -56,11 +52,10 @@ class Indexing:
         if not output_folder_path.exists():
             output_folder_path.mkdir(parents=True)
 
-        for file in self.input_files:
-           
+        for fileid, file in tqdm(enumerate(self.input_files), desc="Indexing Files", total=len(self.input_files)):
             # Open and read the JSONL file
-            with open(file, 'r', encoding='utf-8') as file:
-                for line in tqdm(file, desc='Indexing'):
+            with open(file, 'r', encoding='utf-8') as file_content:
+                for line in file_content:
                     doc = json.loads(line)                                             # Parse JSON line
                     docid = len(self.doc_index)                                        # Assign a new docid incrementally
                     tokens = Preprocessor.preprocess(doc['text'], self.lang)           # Preprocessed text is already tokenized
@@ -70,22 +65,38 @@ class Indexing:
                     for token, tf in token_tf.items():
                         # Add term to lexicon if not already present
                         if token not in self.lexicon:
-                            self.lexicon[token] = LexiconEntry(termid=self.termid)
+                            # self.lexicon[token] = LexiconEntry(termid=self.termid)
+                            # self.termid += 1
+                            
+                            self.lexicon[token] = [self.termid, 0, 0]
+                            self.inv_d[self.termid], self.inv_f[self.termid] =  [], []
                             self.termid += 1
 
                         # Update posting lists and term frequency
-                        lex_entry = self.lexicon[token]
-                        term_id = lex_entry.termid
-                        self.inv_d[term_id].append(docid)          # Add docid to posting list
-                        self.inv_f[term_id].append(tf)             # Add term frequency in docid
-                        lex_entry.doc_freq += 1               # Update document frequency
-                        lex_entry.col_freq += tf              # Update collection term frequency
+
+                        token_id = self.lexicon[token][0]
+                        self.inv_d[token_id].append(docid)
+                        self.inv_f[token_id].append(tf)
+                        self.lexicon[token][1] += 1
+                        self.lexicon[token][2] += tf
+
+
+                        # lex_entry = self.lexicon[token]
+                        # term_id = lex_entry.termid
+                        # self.inv_d[term_id].append(docid)          # Add docid to posting list
+                        # self.inv_f[term_id].append(tf)             # Add term frequency in docid
+                        # lex_entry.doc_freq += 1               # Update document frequency
+                        # lex_entry.col_freq += tf              # Update collection term frequency
 
                     # Document length and statistics
+                    # doclen = len(tokens)
+                    # self.doc_index.append({"docid": str(doc['doc_id']), "length": doclen})  # Add to document index
+                    # self.total_dl += doclen                            # Accumulate total doc length
                     doclen = len(tokens)
-                    self.doc_index.append({"docid": str(doc['doc_id']), "length": doclen})  # Add to document index
-                    self.total_dl += doclen                            # Accumulate total doc length
-
+                    self.doc_index.append((str(doc['doc_id']), doclen))
+                    self.total_dl += doclen
+                    self.num_docs += 1
+                    
         # Properties file with collection statistics
         stats = {
             'num_docs': len(self.doc_index),

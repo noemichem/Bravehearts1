@@ -94,8 +94,7 @@ class InvertedIndexManager:
             inv_file.write(json.dumps({'docids': inv_d, 'freqs': inv_f}) )
 
         with open(f"{output_folder_path}/doc_index.jsonl", 'w', encoding='utf-8') as doc_file:
-            for doc_entry in doc_index:
-                doc_file.write(json.dumps(doc_entry, ensure_ascii=False) + '\n')
+            doc_file.write(json.dumps(doc_index, ensure_ascii=False))
 
         with open(f"{output_folder_path}/stats.json", 'w', encoding='utf-8') as stats_file:
             json.dump(stats, stats_file, ensure_ascii=False, indent=4)

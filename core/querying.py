@@ -9,6 +9,7 @@ class QueryProcessor:
     def __init__(self, index_file):
         lex, inv, doc, stats = InvertedIndexManager.load_index(index_file)
         self.inv_index = InvertedIndex(lex, inv, doc, stats)
+        self.doc = doc
 
     # Conjunctive processing
     def boolean_and(self, postings):
@@ -108,10 +109,20 @@ class QueryProcessor:
         postings = self.inv_index.get_postings(qtermids)
         return self.daat(postings)
 
+    def prepare_final_result(self, scores_docids):
+        final_result = []
+        for score, docid in scores_docids:
+            doc = self.doc[docid]
+            final_result.append({'docid': docid, 'title': doc['title'], 'url': doc['url'], 'score': score,})
+
+        return final_result
+
 
 if __name__ == '__main__':
     
-    input_folder = "./outputs/index_en/index.pkl"
+    input_folder = "./outputs/index_en2/index.pkl"
     
     query_processor = QueryProcessor(input_folder)
-    print(query_processor.query_process_daat('unipi'))
+    result = query_processor.query_process_taat('Marco Raugi')
+    # print(result)
+    print(query_processor.prepare_final_result(result))

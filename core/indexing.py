@@ -8,7 +8,6 @@ from tqdm.auto import tqdm
 from typing import Literal
 
 from .utils import Preprocessor, InvertedIndexManager
-from .models import LexiconEntry
 
 class Indexing:
 
@@ -34,15 +33,15 @@ class Indexing:
         self.lang = "english" if lang == "en" else "italian"
 
         # Initialize data structures
-        self.lexicon = {}               # Term to LexiconEntry mapping
-        self.doc_index = []             # Document index
+        self.lexicon = {}               # "term": [docid, doc_freq, col_freq] where doc_freq is the number of documents in which the term appears and col_freq is the total number of times the term appears in the collection
+        self.doc_index = {}             # Document index
         self.inv_d = defaultdict(list)  # TermID to list of DocIDs
         self.inv_f = defaultdict(list)  # TermID to list of term frequencies in each DocID
         self.termid = 0                 # TermID counter 
 
-        self.num_docs = 0
-        self.total_dl = 0
-        self.total_toks = 0
+        self.num_docs = 0  # Number of documents 
+        self.total_dl = 0  # Total document length
+        self.total_toks = 0 # Total number of tokens
 
 
     def build_index(self):
@@ -58,42 +57,28 @@ class Indexing:
                 for line in file_content:
                     doc = json.loads(line)                                             # Parse JSON line
                     docid = len(self.doc_index)                                        # Assign a new docid incrementally
-                    tokens = Preprocessor.preprocess(doc['text'], self.lang)           # Preprocessed text is already tokenized
+                    tokens = Preprocessor.preprocess(doc['text'], self.lang)          # Tokenize and preprocess text
                     token_tf = Counter(tokens)                                         # Count term frequencies in the document
 
                     # Update lexicon, inverted file, and document index
                     for token, tf in token_tf.items():
                         # Add term to lexicon if not already present
                         if token not in self.lexicon:
-                            # self.lexicon[token] = LexiconEntry(termid=self.termid)
-                            # self.termid += 1
-                            
-                            self.lexicon[token] = [self.termid, 0, 0]
-                            self.inv_d[self.termid], self.inv_f[self.termid] =  [], []
-                            self.termid += 1
+                            self.lexicon[token] = [self.termid, 0, 0]   # [termid, doc_freq, col_freq] i.e. termid is the term identifier, doc_freq is the number of documents in which the term appears, and col_freq is the total number of times the term appears in the collection
+                            self.inv_d[self.termid], self.inv_f[self.termid] =  [], [] # Initialize posting lists
+                            self.termid += 1   # Increment termid
 
                         # Update posting lists and term frequency
+                        token_id = self.lexicon[token][0]       # Get termid
+                        self.inv_d[token_id].append(docid)      # Add docid to posting list
+                        self.inv_f[token_id].append(tf)         # Add term frequency in posting list
+                        self.lexicon[token][1] += 1  # Increment document frequency i.e the number of documents in which the term appears
+                        self.lexicon[token][2] += tf # Increment collection frequency i.e the total number of times the term appears in the collection
 
-                        token_id = self.lexicon[token][0]
-                        self.inv_d[token_id].append(docid)
-                        self.inv_f[token_id].append(tf)
-                        self.lexicon[token][1] += 1
-                        self.lexicon[token][2] += tf
-
-
-                        # lex_entry = self.lexicon[token]
-                        # term_id = lex_entry.termid
-                        # self.inv_d[term_id].append(docid)          # Add docid to posting list
-                        # self.inv_f[term_id].append(tf)             # Add term frequency in docid
-                        # lex_entry.doc_freq += 1               # Update document frequency
-                        # lex_entry.col_freq += tf              # Update collection term frequency
-
-                    # Document length and statistics
-                    # doclen = len(tokens)
-                    # self.doc_index.append({"docid": str(doc['doc_id']), "length": doclen})  # Add to document index
-                    # self.total_dl += doclen                            # Accumulate total doc length
-                    doclen = len(tokens)
-                    self.doc_index.append((str(doc['doc_id']), doclen))
+                    # Update document index
+                    doclen = len(tokens)  # Document length
+                    # self.doc_index.append((str(doc['doc_id']), doclen))
+                    self.doc_index[docid] = {"doclen": doclen, "url": doc['url'], "title": doc['title']}
                     self.total_dl += doclen
                     self.num_docs += 1
                     

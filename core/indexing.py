@@ -78,7 +78,7 @@ class Indexing:
                     # Update document index
                     doclen = len(tokens)  # Document length
                     # self.doc_index.append((str(doc['doc_id']), doclen))
-                    self.doc_index[docid] = {"doclen": doclen, "url": doc['url'], "title": doc['title'], "description": doc['description'], "lang": doc['lang']}
+                    self.doc_index[docid] = {"doclen": doclen, "url": doc['url'], "title": doc['title']}
                     self.total_dl += doclen
                     self.num_docs += 1
                     

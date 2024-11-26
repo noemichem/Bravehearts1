@@ -18,7 +18,7 @@ class InvertedIndex:
         def score(self):
             if self.is_end_list():
                 return math.inf
-            return self.freqs[self.pos]/self.doc[self.docid()][1]
+            return self.freqs[self.pos]/self.doc[self.docid()]['doclen']
 
         def next(self, target = None):
             if not target:

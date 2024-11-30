@@ -33,10 +33,10 @@ class QueryProcessor:
             # We move forward in the shortest posting list
             postings[0].next()
             current_docid = postings[0].docid()
-        return results
+        return self.prepare_final_result(docids=results)
 
-    def query_process_and(self, query):
-        qtokens = set(Preprocessor.preprocess(query))
+    def query_process_and(self, query: str, lang: str = "english"):
+        qtokens = set(Preprocessor.preprocess(query, lang))
         qtermids = self.inv_index.get_termids(qtokens)
         postings = self.inv_index.get_postings(qtermids)
         return self.boolean_and(postings)
@@ -58,10 +58,10 @@ class QueryProcessor:
                 if posting.docid() == current_docid:
                     posting.next()
             current_docid = self.min_docid(postings)
-        return results
+        return self.prepare_final_result(docids=results)
 
-    def query_process_or(self, query):
-        qtokens = set(Preprocessor.preprocess(query))
+    def query_process_or(self, query: str, lang: str = "english"):
+        qtokens = set(Preprocessor.preprocess(query, lang))
         qtermids = self.inv_index.get_termids(qtokens)
         postings = self.inv_index.get_postings(qtermids)
         return self.boolean_or(postings)
@@ -78,10 +78,12 @@ class QueryProcessor:
         top = TopQueue(k)
         for docid, score in A.items():
             top.insert(docid, score)
-        return sorted(top.queue, reverse=True)
+        result = sorted(top.queue, reverse=True)
 
-    def query_process_taat(self, query):
-        qtokens = set(Preprocessor.preprocess(query))
+        return self.prepare_final_result(scores_docids=result)
+
+    def query_process_taat(self, query, lang="english"):
+        qtokens = set(Preprocessor.preprocess(query, lang))
         qtermids = self.inv_index.get_termids(qtokens)
         postings = self.inv_index.get_postings(qtermids)
         return self.taat(postings)
@@ -101,35 +103,47 @@ class QueryProcessor:
                     next_docid = posting.docid()
             top.insert(current_docid, score)
             current_docid = next_docid
-        return sorted(top.queue, reverse=True)
+        result = sorted(top.queue, reverse=True)
+        return self.prepare_final_result(scores_docids=result)
 
-    def query_process_daat(self, query):
-        qtokens = set(Preprocessor.preprocess(query))
+    def query_process_daat(self, query: str, lang: str = "english"):
+        qtokens = set(Preprocessor.preprocess(query, lang))
         qtermids = self.inv_index.get_termids(qtokens)
         postings = self.inv_index.get_postings(qtermids)
         return self.daat(postings)
 
-    def prepare_final_result(self, scores_docids):
+    def prepare_final_result(self, scores_docids=None, docids=None):
+
         final_result = []
-        for score, docid in scores_docids:
-            doc = self.doc[docid]
-            final_result.append(
-                {
-                    "docid": docid,
-                    "title": doc["title"],
-                    "url": doc["url"],
-                    "score": score,
-                }
-            )
+        if docids:
+            for docid in docids:
+                doc = self.doc[docid]
+                final_result.append(
+                    {
+                        "docid": docid,
+                        "title": doc["title"],
+                        "url": doc["url"],
+                    }
+                )
+        else:
+            for score, docid in scores_docids:
+                doc = self.doc[docid]
+                final_result.append(
+                    {
+                        "docid": docid,
+                        "title": doc["title"],
+                        "url": doc["url"],
+                        "score": score,
+                    }
+                )
 
         return final_result
 
 
 if __name__ == "__main__":
 
-    input_folder = "./outputs/index_en2/index.pkl"
+    input_folder = "./data/index/index_en3/index.pkl"
 
     query_processor = QueryProcessor(input_folder)
-    result = query_processor.query_process_taat("Marco Raugi")
-    # print(result)
-    print(query_processor.prepare_final_result(result))
+    result = query_processor.query_process_daat("Marco OR MARCELLONI")
+    print(result)

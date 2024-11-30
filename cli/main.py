@@ -6,6 +6,8 @@ from rich.table import Table
 from rich.text import Text
 from rich.progress import Progress
 
+from langdetect import detect
+
 from core.querying import QueryProcessor
 
 input_folder = "./outputs/index_en2/index.pkl"
@@ -17,10 +19,15 @@ app = typer.Typer()
 # Rich console for output
 console = Console()
 
-def boolean_retrieval(query):
-    query_result = query_processor.query_process_and(query)
-    final_result = query_processor.prepare_final_result(query_result)
-    return final_result
+def boolean_retrieval_conjunctive(query):
+    lang = "english" if detect(query) == "en" else "italian"
+    query_result = query_processor.query_process_and(query, lang)
+    return query_result
+
+def boolean_retrieval_disjunctive(query):
+    lang = "english" if detect(query) == "en" else "italian"
+    query_result = query_processor.query_process_and(query, lang)
+    return query_result
 
 def document_at_a_time(query):
     query_result = query_processor.query_process_daat(query)

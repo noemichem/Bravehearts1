@@ -5,12 +5,12 @@ repos:
     rev: v5.0.0
     hooks:
     -   id: trailing-whitespace
-        exclude: ^(data|others).*$ 
+        exclude: ^(data|others).*$
     -   id: end-of-file-fixer
-        exclude: ^(data|others).*$  
+        exclude: ^(data|others).*$
     -   id: check-yaml
-        exclude: ^(data|others).*$  
-    
+        exclude: ^(data|others).*$
+
 -   repo: https://github.com/psf/black
     rev: 24.10.0
     hooks:

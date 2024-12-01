@@ -1,13 +1,12 @@
+import shutil
 import time
+
 import pyfiglet
 import typer
 from langdetect import detect
-from rich import print
 from rich.console import Console
-from rich.progress import Progress
 from rich.table import Table
 from rich.text import Text
-import shutil 
 
 from core.querying import QueryProcessor
 
@@ -21,26 +20,30 @@ app = typer.Typer()
 console = Console()
 
 
+def detect_language(query: str) -> str:
+    return "english" if detect(query) == "en" else "italian"
+
+
 def boolean_retrieval_conjunctive(query):
-    lang = "english" if detect(query) == "en" else "italian"
+    lang = detect_language(query)
     query_result = query_processor.query_process_and(query, lang)
     return query_result
 
 
 def boolean_retrieval_disjunctive(query):
-    lang = "english" if detect(query) == "en" else "italian"
+    lang = detect_language(query)
     query_result = query_processor.query_process_and(query, lang)
     return query_result
 
 
 def document_at_a_time(query):
-    lang = "english" if detect(query) == "en" else "italian"
-    query_result = query_processor.query_process_daat(query,lang)
+    lang = detect_language(query)
+    query_result = query_processor.query_process_daat(query, lang)
     return query_result
 
 
 def term_at_a_time(query):
-    lang = "english" if detect(query) == "en" else "italian"
+    lang = detect_language(query)
     query_result = query_processor.query_process_taat(query, lang)
     return query_result
 
@@ -59,67 +62,107 @@ def process_query(mode, query):
         return "[red]Invalid mode.[/red]"
 
 
-def display_results(results):
+def display_horizontal_line():
+    console.print("[bold white]" + "=" * get_terminal_width() + "[/bold white]")  # noqa
+
+
+def display_results(results, execution_time):
     """
-    Formats and displays search results using the rich library.
+    Formats and displays search results using the rich
+    library with enhanced styling for a CLI search engine.
     """
+
     if not results:
-        console.print("[bold red]No results found for the query.[/bold red]")
+        console.print(
+            "[bold red]❌ No results found for the query. Try again![/bold red]\n",  # noqa
+            justify="center",
+        )
         return
 
-    table = Table(title="Search Results", style="cyan", show_lines=True)
-    table.add_column("Rank", justify="center", style="bold green")
-    table.add_column("Title", style="bold white")
-    table.add_column("Score", justify="right", style="yellow")
-    table.add_column("URL", style="magenta")
+    # Display the number of results found
+    num_results = len(results)
+    console.print(
+        f"\n[bold yellow]🔍 {num_results} Results found in {execution_time:.2f} seconds[/bold yellow]\n"  # noqa
+    )
 
+    # Create a table with enhanced aesthetics
+    table = Table(
+        title="[bold yellow]🔎 Search Results[/bold yellow]",
+        title_style="bold blue",
+        show_lines=True,
+        expand=True,
+    )
+
+    # Add columns with customized style
+    table.add_column("Rank", justify="center", style="bold green", width=6)
+    table.add_column("Title", style="bold white", width=30)
+    if results[0].get("score") is not None:
+        table.add_column("Score", justify="right", style="yellow", width=10)
+    table.add_column("URL", style="magenta", width=40)
+
+    # Add results to the table
     for rank, result in enumerate(results, start=1):
-        table.add_row(
-            str(rank),
-            result["title"],
-            f"{result['score']:.4f}",
-            f"[blue underline]{result['url']}[/blue underline]",
-        )
+        if result.get("score") is not None:
+            table.add_row(
+                str(rank),
+                result["title"],
+                f"{result['score']:.4f}",
+                f"[blue underline]{result['url']}[/blue underline]",
+            )
+        else:
+            table.add_row(
+                str(rank),
+                result["title"],
+                f"[blue underline]{result['url']}[/blue underline]",
+            )
 
+    # Display the table
     console.print(table)
 
+    display_horizontal_line()
 
 
 def goodbye():
     # Display a colorful goodbye message with ASCII art
     console.print(Text("\n👋 Goodbye!", style="bold red"), justify="center")
-    
+
     # Add a decorative line below
     console.print(Text("=" * 40, style="bold yellow"), justify="center")
-    
+
     # Create an animation effect for a smooth exit
     farewell_message = [
-        Text("🌟 Thank you for using UNIPI Search Engine! 🌟", style="bold green"),
+        Text(
+            "🌟 Thank you for using UNIPI Search Engine! 🌟", style="bold green"
+        ),  # noqa
         Text("✨ Have a great day! ✨", style="italic cyan"),
         Text("🚀 See you next time! 🚀\n", style="bold magenta"),
     ]
-    
+
     for msg in farewell_message:
         console.print(msg, justify="center")
         time.sleep(1)  # Pause to create an animation effect
 
+
 def get_terminal_width():
     return shutil.get_terminal_size().columns
 
+
 def display_home():
     terminal_width = get_terminal_width()
-    ascii_art = pyfiglet.figlet_format("UNIPI Search Engine", font="slant", width=terminal_width)
-    console.print(ascii_art, style="bold green")    
+    ascii_art = pyfiglet.figlet_format(
+        "UNIPI Search Engine", font="slant", width=terminal_width
+    )
+    console.print(ascii_art, style="bold green")
     console.print("UNIPI Search Engine - CLI version 1.0.0", style="bold blue")
 
-def display_horizontal_line():
-    console.print("[bold white]" + "=" * get_terminal_width() + "[/bold white]")
 
 def display_search_modes():
     display_horizontal_line()
 
     # Add a section for mode selection
-    console.print("\n[bold yellow]Please choose a retrieval mode:[/bold yellow]\n")
+    console.print(
+        "\n[bold yellow]Please choose a retrieval mode:[/bold yellow]\n"
+    )  # noqa
     console.print("1. [green]Document-at-a-Time[/green]\n")
     console.print("2. [cyan]Term-at-a-Time[/cyan]\n")
     console.print("3. [blue]Boolean Retrieval (Conjunctive)[/blue]\n")
@@ -128,6 +171,7 @@ def display_search_modes():
 
     console.print("\n[bold purple]👉 Enter your choice:[/bold purple] ", end="")
 
+
 def invalid_input():
     console.print(
         "\n❌ [bold red]Invalid selection![/bold red] "
@@ -135,7 +179,8 @@ def invalid_input():
         justify="center",
     )
 
-def get_mode_name(mode : int):
+
+def get_mode_name(mode: int):
     mode_names = {
         1: "Document-at-a-Time",
         2: "Term-at-a-Time",
@@ -144,16 +189,18 @@ def get_mode_name(mode : int):
     }
     return mode_names.get(mode, "Invalid Mode")
 
+
 def display_current_mode(mode: int):
     display_horizontal_line()
     console.print(
-            f"\n🌟 [bold green]You are now in mode:[/bold green] [cyan bold]{get_mode_name(mode)}[/cyan bold]"
-        )
+        f"\n🌟 [bold green]You are now in mode:[/bold green] [cyan bold]{get_mode_name(mode)}[/cyan bold]"  # noqa
+    )
     console.print(
-        "\n💡 Enter your queries or type [bold cyan]'change'[/bold cyan] to switch modes "
+        "\n💡 Enter your queries or type [bold cyan]'change'[/bold cyan] to switch modes "  # noqa
         "or [bold red]'exit'[/bold red] to quit.\n",
         style="italic yellow",
     )
+
 
 @app.command()
 def search_engine():
@@ -162,7 +209,7 @@ def search_engine():
     """
 
     display_home()
-   
+
     current_mode = None
 
     while True:
@@ -186,7 +233,7 @@ def search_engine():
         display_current_mode(current_mode)
 
         while True:
-            query = typer.prompt("Enter your query")
+            query = typer.prompt("\nEnter your query")
             if query.lower() == "exit":
                 goodbye()
                 return
@@ -194,9 +241,12 @@ def search_engine():
                 current_mode = None
                 break
             else:
+                start_time = time.time()
                 result = process_query(current_mode, query)
-                display_results(result)
+                end_time = time.time()
 
+                execution_time = end_time - start_time
+                display_results(result, execution_time)
 
 
 if __name__ == "__main__":

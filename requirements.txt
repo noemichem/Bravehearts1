@@ -1,3 +1,4 @@
 nltk==3.9.1
 typer==0.13.1
 langdetect==1.0.9
+pyfiglet==1.0.2

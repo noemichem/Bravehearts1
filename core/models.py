@@ -1,5 +1,6 @@
-import math
 import heapq
+import math
+
 
 class InvertedIndex:
 
@@ -18,9 +19,9 @@ class InvertedIndex:
         def score(self):
             if self.is_end_list():
                 return math.inf
-            return self.freqs[self.pos]/self.doc[self.docid()]['doclen']
+            return self.freqs[self.pos] / self.doc[self.docid()]["doclen"]
 
-        def next(self, target = None):
+        def next(self, target=None):
             if not target:
                 if not self.is_end_list():
                     self.pos += 1
@@ -34,10 +35,8 @@ class InvertedIndex:
         def is_end_list(self):
             return self.pos == len(self.docids)
 
-
         def len(self):
             return len(self.docids)
-
 
     def __init__(self, lex, inv, doc, stats):
         self.lexicon = lex
@@ -46,13 +45,17 @@ class InvertedIndex:
         self.stat = stats
 
     def num_docs(self):
-        return self.stats['num_docs']
+        return self.stats["num_docs"]
 
     def get_posting(self, termid):
-        return InvertedIndex.PostingListIterator(self.inv['docids'][termid], self.inv['freqs'][termid], self.doc)
+        return InvertedIndex.PostingListIterator(
+            self.inv["docids"][termid], self.inv["freqs"][termid], self.doc
+        )
 
     def get_termids(self, tokens):
-        return [self.lexicon[token][0] for token in tokens if token in self.lexicon]
+        return [
+            self.lexicon[token][0] for token in tokens if token in self.lexicon
+        ]  # noqa
 
     def get_postings(self, termids):
         return [self.get_posting(termid) for termid in termids]
@@ -76,7 +79,7 @@ class TopQueue:
             self.threshold = new_threshold
 
     def __repr__(self):
-        return f'<{self.size()} items, th={self.threshold} {self.queue}'
+        return f"<{self.size()} items, th={self.threshold} {self.queue}"
 
     def insert(self, docid, score):
         if score > self.threshold:
